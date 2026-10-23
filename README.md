@@ -43,28 +43,28 @@ Chromium source
 └─> GN + Ninja  ──> APK
 ```
 
-1. **Fetch Chromium** via `depot_tools`:
+### 1. **Fetch Chromium** via `depot_tools`:
 ```sh
 fetch --nohooks android
 ```
 
-2. Apply upstream Helium patches from imputnet/helium, in the order.
+### 2. Apply upstream Helium patches from imputnet/helium, in the order.
 
-3. defined by its patches/series:
+### 3. defined by its patches/series:
 ```
 upstream-fixes → ungoogled-chromium → helium/core → helium/ui
 ```
 
-3. Apply this repo's Android patches on top.
+### 3.5 Apply this repo's Android patches on top.
 
-4. Configure GN with flags.gn plus Android args:
+### 4. Configure GN with flags.gn plus Android args:
 ```gn
 target_os  = "android"
-target_cpu = "arm64"
+target_cpu = "%ABI%"
 is_debug   = false
 ```
 
-5. Build with Ninja and sign the resulting APK.
+### 5. Build with Ninja and sign the resulting APK.
 
 We deliberately do not vendor Chromium or submodule the source tree.
 Chromium's gclient owns its dependency graph via DEPS files, and any
