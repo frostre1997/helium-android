@@ -44,21 +44,21 @@ Chromium source
 ```
 
 1. **Fetch Chromium** via `depot_tools`:
-   ```sh
-   fetch --nohooks android
+```sh
+fetch --nohooks android
 ```
 
 2. Apply upstream Helium patches from imputnet/helium, in the order
    defined by its patches/series:
-   ```
-   upstream-fixes → ungoogled-chromium → helium/core → helium/ui
-   ```
+```
+upstream-fixes → ungoogled-chromium → helium/core → helium/ui
+```
 3. Apply this repo's Android patches on top.
 4. Configure GN with flags.gn plus Android args:
-   ```gn
-   target_os  = "android"
-   target_cpu = "arm64"
-   is_debug   = false
+```gn
+target_os  = "android"
+target_cpu = "arm64"
+is_debug   = false
    ```
 5. Build with Ninja and sign the resulting APK.
 
