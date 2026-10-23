@@ -205,7 +205,7 @@ Any content imported from other projects retains its original license. For
 example, unmodified code imported from ungoogled-chromium remains under its
 BSD 3-Clause license.
 
-[!IMPORTANT]
+> [!IMPORTANT]
 Upstream Helium is GPL-3.0 and the Chromium base is BSD-3-Clause, but
 Vanadium is GPLv2, which is not compatible with GPLv3. If you combine
 Vanadium patches with Helium patches in a single distribution, review the
