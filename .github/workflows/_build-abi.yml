@@ -150,6 +150,10 @@ jobs:
           mkdir -p chromium_src/build/config
           cp helium-android/ci/gclient_args.gni chromium_src/build/config/gclient_args.gni
 
+          # Create missing Rust toolchain file for GN
+          mkdir -p chromium_src/third_party/rust-toolchain
+          echo "1.75.0" > chromium_src/third_party/rust-toolchain/VERSION
+
       # ---------- 5. GN & Build ----------
       - name: Install gn
         run: |
