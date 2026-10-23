@@ -1,4 +1,4 @@
-name: Build Helium Android (Official Source)
+name: Build Helium - Android
 
 on:
   workflow_call:
@@ -23,11 +23,11 @@ permissions:
 
 jobs:
   build:
-    name: Build ${{ inputs.abi }}
+    name: ${{ inputs.abi }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     concurrency:
-      group: build-${{ inputs.abi }}
+      group: ${{ inputs.abi }}
       cancel-in-progress: false
 
     steps:
@@ -51,7 +51,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ninja-build unzip curl python3 python3-pip
 
-      # ---------- 2. Fetch Chromium ----------
+      # ---------- 2. Fetch Chromium (Official Way) ----------
       - name: Cache depot_tools
         uses: actions/cache@v4
         with:
@@ -69,13 +69,35 @@ jobs:
 
       - name: Fetch Chromium Source
         run: |
-          # Fetch without history to save time and disk space
+          # Prevent Git from hanging on authentication prompts
+          git config --global http.postBuffer 524288000
+          git config --global advice.detachedHead false
+          export GIT_TERMINAL_PROMPT=0
+
           mkdir -p chromium && cd chromium
-          fetch --nohooks --no-history android
           
-          # This is the magic step we missed before! It generates gclient_args.gni
+          # Start a background monitor to print the folder size every 30 seconds
+          (
+            while true; do
+              SIZE=$(du -sh src 2>/dev/null | cut -f1)
+              echo "[TASK] Current size: ${SIZE:-Initializing...}"
+              sleep 30
+            done
+          ) &
+          MONITOR_PID=$!
+
+          # Fetch with verbose flag (-v) so we see the git operations
+          echo "Starting Chromium fetch (this will take 20-30 minutes)..."
+          fetch -v --nohooks --no-history android
+          
+          # Stop the monitor
+          kill $MONITOR_PID
+          
+          echo "Fetch complete! Running build dependencies and hooks..."
           cd src
           ./build/install-build-deps.sh --android
+          
+          echo "Running gclient runhooks (generating GN configs)..."
           gclient runhooks
 
       # ---------- 3. Android Toolchain ----------
@@ -98,15 +120,10 @@ jobs:
       - name: Install Python deps for patching
         run: pip install 'httpx[http2]' zstandard
 
-      - name: Prune binaries
-        run: |
-          cd chromium
-          python3 ../helium-android/utils/prune_binaries.py src ../helium-android/pruning.list
-
       - name: Apply Helium UI Patches
         run: |
           cd chromium
-          # Using the patch script from your repo
+          # Applies the patches from your repo in the order defined by patches/series
           python3 ../helium-android/utils/patches.py apply src ../helium-android/patches
 
       # ---------- 5. GN & Build ----------
@@ -115,7 +132,6 @@ jobs:
           cd chromium/src
           mkdir -p out/${{ inputs.abi }}
           
-          # Simple, clean args because gclient already generated the rest
           cat > out/${{ inputs.abi }}/args.gn <<EOF
           target_os = "android"
           target_cpu = "${{ inputs.abi }}"
@@ -132,11 +148,13 @@ jobs:
           android_ndk_version = "27.2.12479018"
           EOF
           
+          echo "Generating Ninja build files..."
           gn gen out/${{ inputs.abi }}
 
       - name: Build APK
         run: |
           cd chromium/src
+          echo "Starting compilation (this will take 1-3 hours)..."
           autoninja -C out/${{ inputs.abi }} chrome_public_apk -j 4
 
       # ---------- 6. Artifact ----------
