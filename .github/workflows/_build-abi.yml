@@ -179,17 +179,13 @@ jobs:
       # ---------- 5. Pipeline ----------
       - name: Prune binaries
         run: |
-          ./upstream-helium/utils/prune_binaries.py chromium_src upstream-helium/pruning.list
+          ./upstream-helium/utils/prune_binaries.py chromium_src helium-android/pruning.list
 
-      - name: Apply upstream Helium patches
-        run: |
-          ./upstream-helium/utils/patches.py apply chromium_src upstream-helium/patches
-
-      - name: Apply Android patches
+      - name: Apply Android patches (includes upstream)
         run: |
           if [ ! -d helium-android/patches ]; then
-            echo "::warning::No helium-android/patches directory — skipping"
-            exit 0
+            echo "::error::No helium-android/patches directory found"
+            exit 1
           fi
           ./upstream-helium/utils/patches.py apply chromium_src helium-android/patches
 
@@ -197,7 +193,7 @@ jobs:
         run: |
           ./upstream-helium/utils/domain_substitution.py apply \
             -r upstream-helium/domain_regex.list \
-            -f upstream-helium/domain_substitution.list \
+            -f helium-android/domain_substitution.list \
             chromium_src
 
       # ---------- 6. Install gn + ninja ----------
@@ -258,27 +254,3 @@ jobs:
           path: chromium_src/out/${{ inputs.abi }}/apks/ChromePublic.apk
           if-no-files-found: error
           retention-days: 14
-
-      - name: Summary
-        if: always()
-        run: |
-          {
-            echo "## Helium Android — \`${{ inputs.abi }}\`"
-            echo ""
-            echo "| Field | Value |"
-            echo "|---|---|"
-            echo "| ABI | \`${{ inputs.abi }}\` |"
-            echo "| Chromium | \`$(cat upstream-helium/chromium_version.txt 2>/dev/null || echo unknown)\` |"
-            echo "| Helium ref | \`${{ inputs.helium_ref }}\` |"
-            echo "| Status | \`${{ job.status }}\` |"
-            echo ""
-            if [ -f "chromium_src/out/${{ inputs.abi }}/apks/ChromePublic.apk" ]; then
-              echo "### APK"
-              ls -lh "chromium_src/out/${{ inputs.abi }}/apks/ChromePublic.apk"
-            else
-              echo "_No APK produced._"
-            fi
-            echo ""
-            echo "### Disk"
-            df -h
-          } >> $GITHUB_STEP_SUMMARY
