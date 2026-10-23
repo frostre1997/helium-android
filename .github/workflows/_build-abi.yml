@@ -55,14 +55,29 @@ jobs:
           path: upstream-helium
           fetch-depth: 1
 
+      - name: Inspect upstream Helium structure
+        run: |
+          echo "=== upstream-helium root ==="
+          ls -la upstream-helium/ || true
+          echo ""
+          echo "=== Python manifests ==="
+          find upstream-helium -maxdepth 3 \
+            \( -name 'requirements*.txt' -o -name 'pyproject.toml' -o -name 'setup.py' -o -name 'Pipfile' -o -name '.python-version' \) \
+            2>/dev/null || true
+          echo ""
+          echo "=== utils/ ==="
+          ls -la upstream-helium/utils/ 2>/dev/null || true
+          echo ""
+          echo "=== devutils/ ==="
+          ls -la upstream-helium/devutils/ 2>/dev/null || true
+
       - name: Verify required tooling exists
         run: |
           missing=0
           for f in \
             utils/downloads.py utils/clone.py utils/patches.py \
             utils/prune_binaries.py utils/domain_substitution.py \
-            downloads.ini deps.ini chromium_version.txt \
-            .python-version requirements.txt; do
+            downloads.ini deps.ini chromium_version.txt; do
             if [ ! -e "upstream-helium/$f" ]; then
               echo "::error::Missing upstream-helium/$f"
               missing=1
@@ -79,13 +94,47 @@ jobs:
           haskell: true
           tool-cache: false
 
+      - name: Determine Python version
+        id: pyver
+        run: |
+          if [ -f upstream-helium/.python-version ]; then
+            V=$(tr -d '[:space:]' < upstream-helium/.python-version)
+            echo "Using .python-version: $V"
+            echo "version=$V" >> $GITHUB_OUTPUT
+          else
+            echo "::warning::No .python-version found — defaulting to 3.13"
+            echo "version=3.13" >> $GITHUB_OUTPUT
+          fi
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version-file: upstream-helium/.python-version
+          python-version: ${{ steps.pyver.outputs.version }}
 
       - name: Install Python deps
-        run: pip install -r upstream-helium/requirements.txt
+        run: |
+          cd upstream-helium
+          installed=0
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+            installed=1
+          fi
+          if [ -f pyproject.toml ]; then
+            pip install -e .
+            installed=1
+          fi
+          if [ -f setup.py ]; then
+            pip install -e .
+            installed=1
+          fi
+          if [ -f utils/requirements.txt ]; then
+            pip install -r utils/requirements.txt
+            installed=1
+          fi
+          if [ "$installed" -eq 0 ]; then
+            echo "::warning::No manifest found — installing known deps for utils/"
+            pip install 'httpx[http2]' zstandard
+          fi
 
       - name: Report disk after cleanup
         run: df -h
@@ -119,8 +168,6 @@ jobs:
 
       - name: Install Android NDK
         run: |
-          # TODO: replace with the NDK revision pinned in chromium_src/DEPS
-          # (grep android_ndk_revision chromium_src/DEPS).
           echo "::warning::NDK version must match Chromium's DEPS pin — verify before build"
           yes | sdkmanager --licenses >/dev/null
           sdkmanager "ndk;27.2.12479018" "platforms;android-35" "build-tools;35.0.0"
@@ -149,7 +196,18 @@ jobs:
             -f upstream-helium/domain_substitution.list \
             chromium_src
 
-      # ---------- 6. GN ----------
+      # ---------- 6. Install gn + ninja ----------
+      - name: Install gn and ninja via depot_tools
+        run: |
+          git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
+          echo "$PWD/depot_tools" >> $GITHUB_PATH
+
+      - name: Verify gn and ninja
+        run: |
+          gn --version
+          ninja --version
+
+      # ---------- 7. GN ----------
       - name: Configure GN
         run: |
           cd chromium_src
@@ -171,7 +229,7 @@ jobs:
           EOF
           gn gen out/${{ inputs.abi }}
 
-      # ---------- 7. Build with retry ----------
+      # ---------- 8. Build with retry ----------
       - name: Build (attempt 1)
         id: build1
         continue-on-error: true
@@ -188,7 +246,7 @@ jobs:
           gn gen out/${{ inputs.abi }}
           ninja -C out/${{ inputs.abi }} chrome_public_apk -j 4
 
-      # ---------- 8. Artifact + summary ----------
+      # ---------- 9. Artifact + summary ----------
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
