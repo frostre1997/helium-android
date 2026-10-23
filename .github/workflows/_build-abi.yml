@@ -86,9 +86,9 @@ jobs:
           ) &
           MONITOR_PID=$!
 
-          # Fetch with verbose flag (-v) so we see the git operations
+          # Fetch WITHOUT the -v flag
           echo "Starting Chromium fetch (this will take 20-30 minutes)..."
-          fetch -v --nohooks --no-history android
+          fetch --nohooks --no-history android
           
           # Stop the monitor
           kill $MONITOR_PID
