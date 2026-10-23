@@ -196,7 +196,7 @@ All patches are sorted by vendor in the patches/ directory.
 
 - [Titanium Browser](https://github.com/jqssun/android-titanium-browser) by
   [jqssun](https://github.com/jqssun) — the reference community Android port
-- Vanadium by GrapheneOS — hardened
+- [Vanadium](https://github.com/GrapheneOS/Vanadium) by [GrapheneOS](https://github.com/GrapheneOS) — hardened
   Chromium patches (note: GPLv2, see licensing caveat below)
 
 ## License
