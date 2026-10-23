@@ -1,0 +1,212 @@
+name: Helium Build
+
+on:
+  workflow_call:
+    inputs:
+      abi:
+        required: true
+        type: string
+      helium_ref:
+        required: false
+        type: string
+        default: main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ inputs.abi }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    concurrency:
+      group: build-${{ inputs.abi }}
+      cancel-in-progress: false
+
+    steps:
+      # ---------- Sources ----------
+      - name: Checkout Android fork
+        uses: actions/checkout@v6
+        with:
+          path: helium-android
+          fetch-depth: 1
+
+      - name: Checkout upstream Helium
+        uses: actions/checkout@v6
+        with:
+          repository: imputnet/helium
+          ref: ${{ inputs.helium_ref }}
+          path: upstream-helium
+          fetch-depth: 1
+
+      - name: Verify required tooling exists
+        run: |
+          missing=0
+          for f in \
+            utils/downloads.py utils/clone.py utils/patches.py \
+            utils/prune_binaries.py utils/domain_substitution.py \
+            downloads.ini deps.ini chromium_version.txt \
+            .python-version requirements.txt; do
+            if [ ! -e "upstream-helium/$f" ]; then
+              echo "::error::Missing upstream-helium/$f"
+              missing=1
+            fi
+          done
+          [ "$missing" -eq 0 ] || exit 1
+
+      # ---------- Disk / Python ----------
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          android: true
+          dotnet: true
+          haskell: true
+          tool-cache: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: upstream-helium/.python-version
+
+      - name: Install Python deps
+        run: pip install -r upstream-helium/requirements.txt
+
+      - name: Report disk after cleanup
+        run: df -h
+
+      # ---------- Fetch Chromium (tarball, cached) ----------
+      - name: Restore Chromium download cache
+        uses: actions/cache@v5
+        with:
+          path: chromium_download_cache
+          key: ${{ runner.os }}-chromium-dl-${{ hashFiles('upstream-helium/chromium_version.txt', 'upstream-helium/downloads.ini', 'upstream-helium/deps.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-chromium-dl-
+
+      - name: Retrieve Chromium tarballs
+        run: |
+          mkdir -p chromium_download_cache
+          ./upstream-helium/utils/downloads.py retrieve -i upstream-helium/downloads.ini -c chromium_download_cache &
+          DEPS_PID=$!
+          ./upstream-helium/utils/downloads.py retrieve -i upstream-helium/deps.ini -c chromium_download_cache
+          wait "$DEPS_PID"
+
+      - name: Unpack Chromium source
+        run: |
+          rm -rf chromium_src
+          ./upstream-helium/utils/downloads.py unpack -i upstream-helium/downloads.ini -c chromium_download_cache chromium_src
+          ./upstream-helium/utils/downloads.py unpack -i upstream-helium/deps.ini -c chromium_download_cache chromium_src
+
+      # ---------- Android toolchain ----------
+      # NOTE: the tarball is platform-agnostic Chromium source. It does NOT
+      # include the Android SDK/NDK, which Chromium normally pins via DEPS.
+      # We install matching versions manually and pass them to GN below.
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        run: |
+          # TODO: replace with the NDK revision pinned in chromium_src/DEPS
+          # (look for `android_ndk_revision` in chromium_src/DEPS).
+          echo "::warning::NDK version must match Chromium's DEPS pin — verify before build"
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager "ndk;27.2.12479018" "platforms;android-35" "build-tools;35.0.0"
+
+      # ---------- Pipeline ----------
+      - name: Prune binaries
+        run: |
+          ./upstream-helium/utils/prune_binaries.py chromium_src upstream-helium/pruning.list
+
+      - name: Apply upstream Helium patches
+        run: |
+          ./upstream-helium/utils/patches.py upstream-helium/patches chromium_src
+
+      - name: Apply Android patches
+        run: |
+          # Skip cleanly if the fork has no patches yet (expected on first setup)
+          if [ ! -d helium-android/patches ]; then
+            echo "::warning::No helium-android/patches directory — skipping"
+            exit 0
+          fi
+          ./upstream-helium/utils/patches.py helium-android/patches chromium_src
+
+      - name: Domain substitution
+        run: |
+          ./upstream-helium/utils/domain_substitution.py apply \
+            -r upstream-helium/domain_regex.list \
+            -f upstream-helium/domain_substitution.list \
+            chromium_src
+
+      # ---------- GN ----------
+      - name: Configure GN
+        run: |
+          cd chromium_src
+          mkdir -p out/${{ inputs.abi }}
+          cat > out/${{ inputs.abi }}/args.gn <<EOF
+          target_os = "android"
+          target_cpu = "${{ inputs.abi }}"
+          is_debug = false
+          is_official_build = true
+          symbol_level = 0
+          blink_symbol_level = 0
+          v8_symbol_level = 0
+          is_component_build = false
+          enable_nacl = false
+          use_thin_lto = false
+          EOF
+          # Append toolchain paths
+          {
+            echo "android_sdk_root = \"$ANDROID_HOME\""
+            echo "android_ndk_root = \"$ANDROID_HOME/ndk/27.2.12479018\""
+            echo "android_ndk_version = \"27.2.12479018\""
+          } >> out/${{ inputs.abi }}/args.gn
+          gn gen out/${{ inputs.abi }}
+
+      # ---------- Build with retry ----------
+      - name: Build (attempt 1)
+        id: build1
+        continue-on-error: true
+        run: |
+          cd chromium_src
+          ninja -C out/${{ inputs.abi }} chrome_public_apk -j 4
+
+      - name: gn clean + retry
+        if: steps.build1.outcome == 'failure'
+        run: |
+          cd chromium_src
+          echo "::warning::Attempt 1 failed — gn clean and retry once"
+          gn clean out/${{ inputs.abi }}
+          gn gen out/${{ inputs.abi }}
+          ninja -C out/${{ inputs.abi }} chrome_public_apk -j 4
+
+      # ---------- Artifact + summary ----------
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: helium-android-${{ inputs.abi }}-${{ github.run_number }}
+          path: chromium_src/out/${{ inputs.abi }}/apks/ChromePublic.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Helium Android — \`${{ inputs.abi }}\`"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| ABI | \`${{ inputs.abi }}\` |"
+            echo "| Chromium | \`$(cat upstream-helium/chromium_version.txt)\` |"
+            echo "| Status | \`${{ job.status }}\` |"
+            echo ""
+            if [ -f "chromium_src/out/${{ inputs.abi }}/apks/ChromePublic.apk" ]; then
+              echo "### APK"
+              ls -lh "chromium_src/out/${{ inputs.abi }}/apks/ChromePublic.apk"
+            else
+              echo "_No APK produced._"
+            fi
+            echo ""
+            echo "### Disk"
+            df -h
+          } >> $GITHUB_STEP_SUMMARY
