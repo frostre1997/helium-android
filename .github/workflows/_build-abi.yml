@@ -67,9 +67,6 @@ jobs:
           echo ""
           echo "=== utils/ ==="
           ls -la upstream-helium/utils/ 2>/dev/null || true
-          echo ""
-          echo "=== devutils/ ==="
-          ls -la upstream-helium/devutils/ 2>/dev/null || true
 
       - name: Verify required tooling exists
         run: |
@@ -171,7 +168,7 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: '' # Google removed the legacy 'tools' package, so we skip defaults
+          packages: ''
 
       - name: Install Android NDK
         run: |
@@ -186,7 +183,7 @@ jobs:
 
       - name: Apply upstream Helium patches
         run: |
-          ./upstream-helium/utils/patches.py apply upstream-helium/patches chromium_src
+          ./upstream-helium/utils/patches.py apply chromium_src upstream-helium/patches
 
       - name: Apply Android patches
         run: |
@@ -194,7 +191,7 @@ jobs:
             echo "::warning::No helium-android/patches directory — skipping"
             exit 0
           fi
-          ./upstream-helium/utils/patches.py apply helium-android/patches chromium_src
+          ./upstream-helium/utils/patches.py apply chromium_src helium-android/patches
 
       - name: Domain substitution
         run: |
