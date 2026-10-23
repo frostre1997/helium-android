@@ -207,7 +207,7 @@ content unique to this port is licensed under GPL-3.0. See
 
 Any content imported from other projects retains its original license. For
 example, unmodified code imported from ungoogled-chromium remains under its
-BSD 3-Clause license.
+[BSD 3-Clause license](https://github.com/ungoogled-software/ungoogled-chromium/blob/master/LICENSE).
 
 > [!IMPORTANT]
 Upstream Helium is GPL-3.0 and the Chromium base is BSD-3-Clause, but
