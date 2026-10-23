@@ -3,9 +3,64 @@ target_cpu = "%ABI%"
 is_debug = false
 is_official_build = true
 symbol_level = 0
-blink_symbol_level = 0
-v8_symbol_level = 0
-is_component_build = false
-enable_nacl = false
-use_thin_lto = false
-enable_rust = false
+
+# --- Android Optimizations ---
+android_channel="stable"
+blink_symbol_level=0
+build_contextual_search=false
+chrome_pgo_phase=2
+dcheck_always_on=false
+disable_fieldtrial_testing_config=true
+enable_hangout_services_extension=false
+enable_iterator_debugging=false
+enable_mdns=false
+enable_remoting=false
+enable_reporting=false
+enable_vr=false
+exclude_unwind_tables=false
+icu_use_data_file=true
+is_component_build=false
+rtc_build_examples=false
+treat_warnings_as_errors=false
+use_official_google_api_keys=false
+use_rtti=false
+enable_arcore=false
+enable_openxr=false
+enable_cardboard=false
+is_high_end_android=true
+
+# --- Media Codecs (Crucial for video playback) ---
+proprietary_codecs=true
+ffmpeg_branding="Chrome"
+enable_av1_decoder=true
+enable_dav1d_decoder=true
+media_use_openh264=false
+enable_platform_aac_audio=true
+enable_platform_h264_video=true
+enable_platform_hevc=true
+enable_platform_dolby_vision=false
+enable_platform_encrypted_dolby_vision=false
+enable_platform_dts_audio=false
+
+# --- Cromite Hardening / Fixes ---
+use_v8_context_snapshot=false
+enable_bound_session_credentials=false
+safe_browsing_use_unrar=false
+enable_request_header_integrity=false
+enable_precompiled_headers=false
+build_tflite_with_xnnpack=false
+build_litert_with_xnnpack=false
+use_debug_fission=true
+dfmify_dev_ui=false
+disable_android_lint=true
+include_both_v8_snapshots=false
+include_both_v8_snapshots_android_secondary_abi=false
+generate_linker_map=true
+
+# --- Branding ---
+# Change these if you want a different package name
+chrome_public_manifest_package="org.helium.android"
+
+declare_args() {
+  build_webview = false
+}
