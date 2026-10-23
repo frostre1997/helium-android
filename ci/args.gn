@@ -8,3 +8,4 @@ v8_symbol_level = 0
 is_component_build = false
 enable_nacl = false
 use_thin_lto = false
+enable_rust = false
