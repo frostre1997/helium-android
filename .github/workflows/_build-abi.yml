@@ -200,6 +200,8 @@ jobs:
       - name: Install gn and ninja via depot_tools
         run: |
           git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
+          # Trigger bootstrap to generate python3_bin_reldir.txt and download binaries
+          ./depot_tools/gclient version
           echo "$PWD/depot_tools" >> $GITHUB_PATH
 
       - name: Verify gn and ninja
