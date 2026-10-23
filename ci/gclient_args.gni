@@ -1,10 +1,41 @@
 declare_args() {
+  # --- Core ---
   build_with_chromium = true
+  
+  # --- Android (Enable) ---
   checkout_android = true
   checkout_android_native_support = true
-  checkout_google_benchmark = false
-  checkout_src_internal = false
-  checkout_nacl = false
-  checkout_pdfium = true
+  
+  # --- Platforms (Disable) ---
+  checkout_arc = false
+  checkout_chromeos = false
+  checkout_cros_sdk = false
+  checkout_fuchsia = false
   checkout_ios = false
+  checkout_ios_webkit = false
+  checkout_mac = false
+  checkout_mac_toolchain = false
+  checkout_win = false
+  checkout_win_toolchain = false
+  
+  # --- Features & Tools (Disable to save space & avoid missing files) ---
+  checkout_android_prebuilts_build_tools = false
+  checkout_chromium_autofill_test_dependencies = false
+  checkout_google_benchmark = false
+  checkout_libaom = false
+  checkout_nacl = false
+  checkout_nacl_tests = false
+  checkout_oculus_sdk = false
+  checkout_openxr = false
+  checkout_pgo_profiles = false
+  checkout_remoting = false
+  checkout_skia = false
+  checkout_src_internal = false
+  checkout_telemetry = false
+  checkout_telemetry_dependencies = false
+  checkout_widevine = false
+  checkout_wpr_archives = false
+  
+  # --- PDF (Usually required) ---
+  checkout_pdfium = true
 }
