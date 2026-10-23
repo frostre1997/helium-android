@@ -67,12 +67,12 @@ Chromium's gclient owns its dependency graph via DEPS files, and any
 foreign Git structure breaks that. This is the same reason Helium, Titanium,
 Bromite, and ungoogled-chromium all ship patches instead of forks.
 
-Downloads
+## Downloads
 
 There are no official releases yet. To get an APK you must build it yourself
 (see Development) or use a community build at your own risk.
 
-[!NOTE]
+> [!NOTE]
 Extension support exists but is fragile on Android. You must enable
 "Desktop site" before visiting the Chrome Web Store, and the OS may
 kill extension background pages at any time.
@@ -81,22 +81,22 @@ Related repos
 
 Upstream Helium
 
-· Helium core — patch stack, tooling, services
-· Helium for macOS
-· Helium for Linux
-· Helium for Windows
+- Helium core — patch stack, tooling, services
+- Helium for macOS
+- Helium for Linux
+- Helium for Windows
 
 Android community
 
-· Titanium Browser — the
+- Titanium Browser — the
   original community Android port, formerly android-helium-browser
-· This repo — Android platform
+- This repo — Android platform
   layer used by this port
 
 Build dependencies
 
-· depot_tools
-· Chromium Android build instructions
+- depot_tools
+- Chromium Android build instructions
 
 Development
 
@@ -106,9 +106,9 @@ tested on Ubuntu (latest LTS) with a standard Chromium Android toolchain
 
 Requirements
 
-· ~500 GB free disk space (source + build artifacts)
-· 16 GB RAM minimum, 32 GB recommended
-· Python 3, quilt, and the Chromium Android system dependencies
+- ~500 GB free disk space (source + build artifacts)
+- 16 GB RAM minimum, 32 GB recommended
+- Python 3, quilt, and the Chromium Android system dependencies
 
 Quick start
 
@@ -137,14 +137,14 @@ Chromium tree, then refresh the patches with quilt refresh.
 
 Known issues
 
-· White-screen crash after several days of use; may require clearing app
+- White-screen crash after several days of use; may require clearing app
   data to recover.
-· No DRM support — streaming services such as Netflix will not work.
-· WebRTC leaks are prevented by default, which can break apps like Discord
+- No DRM support — streaming services such as Netflix will not work.
+- WebRTC leaks are prevented by default, which can break apps like Discord
   Voice. Adjust the policy in settings if needed.
-· Extension background pages are frequently killed by the OS, breaking
+- Extension background pages are frequently killed by the OS, breaking
   ad-blockers such as uBlock Origin.
-· Not a security substitute for running GrapheneOS with Vanadium. App-level
+- Not a security substitute for running GrapheneOS with Vanadium. App-level
   hardening cannot replace kernel- and memory-level protections.
 
 Contributing
@@ -153,9 +153,9 @@ Before contributing, please read upstream's
 CONTRIBUTING.md.
 For this port, please open issues with:
 
-· the Chromium version you built against
-· the exact patch that failed (if the build broke)
-· device model and Android version
+- the Chromium version you built against
+- the exact patch that failed (if the build broke)
+- device model and Android version
 
 Credits
 
@@ -180,19 +180,19 @@ Other Chromium projects
 
 Helium includes patches from other open source Chromium projects:
 
-· Inox patchset
-· Debian
-· Bromite
-· Iridium Browser
-· Brave
+- Inox patchset
+- Debian
+- Bromite
+- Iridium Browser
+- Brave
 
 All patches are sorted by vendor in the patches/ directory.
 
 Android port
 
-· Titanium Browser by
+- Titanium Browser by
   jqssun — the reference community Android port
-· Vanadium by GrapheneOS — hardened
+- Vanadium by GrapheneOS — hardened
   Chromium patches (note: GPLv2, see licensing caveat below)
 
 License
