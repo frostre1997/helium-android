@@ -32,7 +32,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ${{ inputs.abi }}
+    name: ${{ inputs.abi }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     concurrency:
@@ -80,10 +80,27 @@ jobs:
       - name: Retrieve Chromium tarballs
         run: |
           mkdir -p chromium_download_cache
-          ./upstream-helium/utils/downloads.py retrieve -i upstream-helium/downloads.ini -c chromium_download_cache &
-          DEPS_PID=$!
-          ./upstream-helium/utils/downloads.py retrieve -i upstream-helium/deps.ini -c chromium_download_cache
-          wait "$DEPS_PID"
+          max_retries=5
+          count=0
+          until [ "$count" -ge "$max_retries" ]; do
+          echo "Download Attempt $((count+1)) of $max_retries..."
+      
+          # Run both downloads sequentially to make retrying reliable
+          if ./upstream-helium/utils/downloads.py retrieve -i upstream-helium/downloads.ini -c chromium_download_cache && \
+             ./upstream-helium/utils/downloads.py retrieve -i upstream-helium/deps.ini -c chromium_download_cache; then
+            echo "Download successful!"
+            break
+          fi
+      
+          count=$((count+1))
+          if [ "$count" -lt "$max_retries" ]; then
+            echo "::warning::Download failed. Retrying in 10 seconds..."
+            sleep 10
+          else
+            echo "::error::Download failed after $max_retries attempts."
+            exit 1
+          fi
+        done
 
       - name: Unpack Chromium source
         run: |
