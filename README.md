@@ -48,18 +48,22 @@ Chromium source
 fetch --nohooks android
 ```
 
-2. Apply upstream Helium patches from imputnet/helium, in the order
-   defined by its patches/series:
+2. Apply upstream Helium patches from imputnet/helium, in the order.
+
+3. defined by its patches/series:
 ```
 upstream-fixes → ungoogled-chromium → helium/core → helium/ui
 ```
+
 3. Apply this repo's Android patches on top.
+
 4. Configure GN with flags.gn plus Android args:
 ```gn
 target_os  = "android"
 target_cpu = "arm64"
 is_debug   = false
-   ```
+```
+
 5. Build with Ninja and sign the resulting APK.
 
 We deliberately do not vendor Chromium or submodule the source tree.
@@ -77,7 +81,7 @@ Extension support exists but is fragile on Android. You must enable
 "Desktop site" before visiting the Chrome Web Store, and the OS may
 kill extension background pages at any time.
 
-Related repos
+## Related repos
 
 Upstream Helium
 
@@ -86,31 +90,31 @@ Upstream Helium
 - Helium for Linux
 - Helium for Windows
 
-Android community
+## Android community
 
 - Titanium Browser — the
   original community Android port, formerly android-helium-browser
 - This repo — Android platform
   layer used by this port
 
-Build dependencies
+## Build dependencies
 
 - depot_tools
 - Chromium Android build instructions
 
-Development
+## Development
 
 macOS and Linux are the upstream development platforms. Android builds are
 tested on Ubuntu (latest LTS) with a standard Chromium Android toolchain
 (depot_tools, Android SDK, NDK, JDK).
 
-Requirements
+## Requirements
 
 - ~500 GB free disk space (source + build artifacts)
 - 16 GB RAM minimum, 32 GB recommended
 - Python 3, quilt, and the Chromium Android system dependencies
 
-Quick start
+## Quick start
 
 ```sh
 # 1. Toolchain
@@ -135,7 +139,7 @@ Exact patch application order and signing steps live in the build scripts in
 this repo. Do not edit files in patches/ directly — make changes in the
 Chromium tree, then refresh the patches with quilt refresh.
 
-Known issues
+## Known issues
 
 - White-screen crash after several days of use; may require clearing app
   data to recover.
@@ -147,7 +151,7 @@ Known issues
 - Not a security substitute for running GrapheneOS with Vanadium. App-level
   hardening cannot replace kernel- and memory-level protections.
 
-Contributing
+## Contributing
 
 Before contributing, please read upstream's
 CONTRIBUTING.md.
@@ -157,26 +161,26 @@ For this port, please open issues with:
 - the exact patch that failed (if the build broke)
 - device model and Android version
 
-Credits
+## Credits
 
-The Chromium project
+### The Chromium project
 
 The Chromium Project is at the core of Helium,
 making it possible in the first place.
 
-Helium
+### Helium
 
 Helium by
 imput provides the patch stack, tooling, and
 services this port builds on.
 
-ungoogled-chromium
+### ungoogled-chromium
 
 Helium originally branched off
 ungoogled-chromium.
 Special thanks to everyone behind that project.
 
-Other Chromium projects
+### Other Chromium projects
 
 Helium includes patches from other open source Chromium projects:
 
@@ -188,18 +192,18 @@ Helium includes patches from other open source Chromium projects:
 
 All patches are sorted by vendor in the patches/ directory.
 
-Android port
+## Android port
 
 - Titanium Browser by
   jqssun — the reference community Android port
 - Vanadium by GrapheneOS — hardened
   Chromium patches (note: GPLv2, see licensing caveat below)
 
-License
+## License
 
 All code, patches, modified portions of imported code or patches, and any other
 content unique to this port is licensed under GPL-3.0. See
-LICENSE.
+[LICENSE](LICENSE).
 
 Any content imported from other projects retains its original license. For
 example, unmodified code imported from ungoogled-chromium remains under its
