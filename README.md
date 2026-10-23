@@ -85,10 +85,10 @@ kill extension background pages at any time.
 
 Upstream Helium
 
-- Helium core — patch stack, tooling, services
-- Helium for macOS
-- Helium for Linux
-- Helium for Windows
+- [Helium core](https://github.com/imputnet/helium) — patch stack, tooling, services
+- Helium for [macOS](https://github.com/imputnet/helium-macos)
+- Helium for [Linux](https://github.com/imputnet/helium-linux)
+- Helium for [Windows](https://github.com/imputnet/helium-windows)
 
 ## Android community
 
