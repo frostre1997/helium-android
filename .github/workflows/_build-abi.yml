@@ -1,4 +1,4 @@
-name: build-abi
+name: Helium Build CI (Android)
 
 on:
   workflow_call:
