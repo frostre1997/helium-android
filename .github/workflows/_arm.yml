@@ -1,0 +1,15 @@
+name: Helium Build CI (arm)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 4 * * 0"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/_build-abi.yml
+    with:
+      abi: arm
