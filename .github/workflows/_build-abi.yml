@@ -214,10 +214,21 @@ jobs:
 
       - name: Verify gn and ninja
         run: |
-         gn --version
-         ninja --version
+          gn --version
+          ninja --version
 
       # ---------- 7. GN ----------
+      - name: Generate gclient_args.gni
+        run: |
+          mkdir -p chromium_src/build/config
+          cat > chromium_src/build/config/gclient_args.gni <<EOF
+          declare_args() {
+            checkout_android = true
+            checkout_android_native_support = true
+            checkout_google_benchmark = false
+          }
+          EOF
+      
       - name: Configure GN
         run: |
           cd chromium_src
