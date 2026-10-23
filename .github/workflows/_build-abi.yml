@@ -186,7 +186,7 @@ jobs:
 
       - name: Apply upstream Helium patches
         run: |
-          ./upstream-helium/utils/patches.py upstream-helium/patches chromium_src
+          ./upstream-helium/utils/patches.py apply upstream-helium/patches chromium_src
 
       - name: Apply Android patches
         run: |
@@ -194,7 +194,7 @@ jobs:
             echo "::warning::No helium-android/patches directory — skipping"
             exit 0
           fi
-          ./upstream-helium/utils/patches.py helium-android/patches chromium_src
+          ./upstream-helium/utils/patches.py apply helium-android/patches chromium_src
 
       - name: Domain substitution
         run: |
