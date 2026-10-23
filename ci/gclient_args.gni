@@ -1,0 +1,11 @@
+declare_args() {
+  build_with_chromium = true
+  checkout_android = true
+  checkout_android_native_support = true
+  checkout_google_benchmark = false
+  checkout_src_internal = false
+  checkout_nacl = false
+  checkout_pdfium = true
+  is_chrome_branded = false
+  checkout_ios = false
+}
