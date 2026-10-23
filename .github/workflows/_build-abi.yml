@@ -100,7 +100,7 @@ jobs:
             echo "::error::Download failed after $max_retries attempts."
             exit 1
           fi
-        done
+          done
 
       - name: Unpack Chromium source
         run: |
