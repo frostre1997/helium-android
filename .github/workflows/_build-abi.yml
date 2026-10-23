@@ -197,20 +197,25 @@ jobs:
             chromium_src
 
       # ---------- 6. Install gn + ninja ----------
-      - name: Install gn and ninja via depot_tools
+      - name: Install gn and ninja
         run: |
-          git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
-          # Add to PATH for this step
-          export PATH="$PWD/depot_tools:$PATH"
-          # Now gclient finds its own absolute path and bootstraps correctly
-          gclient version
-          # Persist for subsequent steps
-          echo "$PWD/depot_tools" >> $GITHUB_PATH
-          
+          sudo apt-get update
+          sudo apt-get install -y ninja-build unzip
+    
+          # Download prebuilt gn directly from Chromium's CIPD
+          mkdir -p $HOME/gn
+          cd $HOME/gn
+          curl -sSLo gn.zip "https://chrome-infra-packages.appspot.com/dl/gn/gn/linux-amd64/+/latest"
+          unzip -o gn.zip
+          chmod +x gn
+    
+          # Add to PATH
+          echo "$HOME/gn" >> $GITHUB_PATH
+
       - name: Verify gn and ninja
         run: |
-          gn --version
-          ninja --version
+         gn --version
+         ninja --version
 
       # ---------- 7. GN ----------
       - name: Configure GN
