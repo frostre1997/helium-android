@@ -6,6 +6,5 @@ declare_args() {
   checkout_src_internal = false
   checkout_nacl = false
   checkout_pdfium = true
-  is_chrome_branded = false
   checkout_ios = false
 }
