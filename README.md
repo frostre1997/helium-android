@@ -37,12 +37,10 @@ If a patch isn't listed there, it isn't applied.
 The build is a sequential pipeline. Each layer is applied on top of the last:
 
 ```
-
 Chromium source
 └─> upstream Helium patches   (imputnet/helium)
 └─> Android patches     (this repo)
 └─> GN + Ninja  ──> APK
-
 ```
 
 1. **Fetch Chromium** via `depot_tools`:
