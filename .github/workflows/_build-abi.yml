@@ -1,4 +1,4 @@
-name: Helium Build CI (Android)
+name: Build Helium Android (Official Source)
 
 on:
   workflow_call:
@@ -6,10 +6,6 @@ on:
       abi:
         required: true
         type: string
-      helium_ref:
-        required: false
-        type: string
-        default: main
   workflow_dispatch:
     inputs:
       abi:
@@ -21,11 +17,6 @@ on:
           - arm
           - x64
           - x86
-      helium_ref:
-        description: 'Upstream Helium ref (branch or tag)'
-        required: false
-        type: string
-        default: 'main'
 
 permissions:
   contents: read
@@ -47,63 +38,45 @@ jobs:
           path: helium-android
           fetch-depth: 1
 
-      - name: Checkout upstream Helium
-        uses: actions/checkout@v6
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
         with:
-          repository: imputnet/helium
-          ref: ${{ inputs.helium_ref }}
-          path: upstream-helium
-          fetch-depth: 1
+          android: true
+          dotnet: true
+          haskell: true
+          tool-cache: false
 
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build unzip curl
+          sudo apt-get install -y ninja-build unzip curl python3 python3-pip
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-
-      - name: Install Python deps
-        run: pip install 'httpx[http2]' zstandard
-
-      # ---------- 2. Chromium Fetch & Unpack ----------
-      - name: Restore Chromium download cache
+      # ---------- 2. Fetch Chromium ----------
+      - name: Cache depot_tools
         uses: actions/cache@v4
         with:
-          path: chromium_download_cache
-          key: ${{ runner.os }}-chromium-dl-${{ hashFiles('upstream-helium/chromium_version.txt', 'upstream-helium/downloads.ini', 'upstream-helium/deps.ini') }}
-          restore-keys: |
-            ${{ runner.os }}-chromium-dl-
+          path: depot_tools
+          key: depot-tools-${{ runner.os }}-v2
 
-      - name: Retrieve Chromium tarballs
+      - name: Install depot_tools
         run: |
-          mkdir -p chromium_download_cache
-          max_retries=5
-          count=0
-          until [ "$count" -ge "$max_retries" ]; do
-            echo "Download Attempt $((count+1)) of $max_retries..."
-            if ./upstream-helium/utils/downloads.py retrieve -i upstream-helium/downloads.ini -c chromium_download_cache && \
-               ./upstream-helium/utils/downloads.py retrieve -i upstream-helium/deps.ini -c chromium_download_cache; then
-              echo "Download successful!"
-              break
-            fi
-            count=$((count+1))
-            if [ "$count" -lt "$max_retries" ]; then
-              echo "::warning::Download failed. Retrying in 10 seconds..."
-              sleep 10
-            else
-              echo "::error::Download failed after $max_retries attempts."
-              exit 1
-            fi
-          done
+          if [ ! -d depot_tools ]; then
+            git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
+          fi
+          echo "$PWD/depot_tools" >> $GITHUB_PATH
+          export PATH="$PWD/depot_tools:$PATH"
+          gclient version
 
-      - name: Unpack Chromium source
+      - name: Fetch Chromium Source
         run: |
-          rm -rf chromium_src
-          ./upstream-helium/utils/downloads.py unpack -i upstream-helium/downloads.ini -c chromium_download_cache chromium_src
-          ./upstream-helium/utils/downloads.py unpack -i upstream-helium/deps.ini -c chromium_download_cache chromium_src
+          # Fetch without history to save time and disk space
+          mkdir -p chromium && cd chromium
+          fetch --nohooks --no-history android
+          
+          # This is the magic step we missed before! It generates gclient_args.gni
+          cd src
+          ./build/install-build-deps.sh --android
+          gclient runhooks
 
       # ---------- 3. Android Toolchain ----------
       - name: Prepare Android SDK directory
@@ -111,83 +84,66 @@ jobs:
           sudo mkdir -p /usr/local/lib/android/sdk
           sudo chown -R $USER:$USER /usr/local/lib/android
 
-      - name: Cache Android SDK/NDK
-        uses: actions/cache@v4
-        id: android-sdk-cache
-        with:
-          path: /usr/local/lib/android
-          key: ${{ runner.os }}-android-sdk-ndk27-v2
-
       - name: Setup Android SDK Tools
         uses: android-actions/setup-android@v3
         with:
-          packages: '' # Prevents trying to download the removed 'tools' package
+          packages: ''
 
       - name: Install Android NDK & Platform
-        if: steps.android-sdk-cache.outputs.cache-hit != 'true'
         run: |
           yes | sdkmanager --licenses >/dev/null
           sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018"
 
-      # ---------- 4. Patches & Configs ----------
+      # ---------- 4. Apply Helium Patches ----------
+      - name: Install Python deps for patching
+        run: pip install 'httpx[http2]' zstandard
+
       - name: Prune binaries
         run: |
-          ./upstream-helium/utils/prune_binaries.py chromium_src helium-android/pruning.list
+          cd chromium
+          python3 ../helium-android/utils/prune_binaries.py src ../helium-android/pruning.list
 
-      - name: Apply Patches
+      - name: Apply Helium UI Patches
         run: |
-          ./upstream-helium/utils/patches.py apply chromium_src helium-android/patches
-
-      - name: Domain substitution
-        run: |
-          ./upstream-helium/utils/domain_substitution.py apply \
-            -r upstream-helium/domain_regex.list \
-            -f helium-android/domain_substitution.list \
-            chromium_src
-
-      - name: Copy Config Files from Repo
-        run: |
-          mkdir -p chromium_src/build/config
-          cp helium-android/ci/gclient_args.gni chromium_src/build/config/gclient_args.gni
-
-          # Create missing Rust toolchain file for GN
-          mkdir -p chromium_src/third_party/rust-toolchain
-          echo "1.75.0" > chromium_src/third_party/rust-toolchain/VERSION
+          cd chromium
+          # Using the patch script from your repo
+          python3 ../helium-android/utils/patches.py apply src ../helium-android/patches
 
       # ---------- 5. GN & Build ----------
-      - name: Install gn
-        run: |
-          mkdir -p $HOME/gn && cd $HOME/gn
-          curl -sSLo gn.zip "https://chrome-infra-packages.appspot.com/dl/gn/gn/linux-amd64/+/latest"
-          unzip -o gn.zip && chmod +x gn
-          echo "$HOME/gn" >> $GITHUB_PATH
-
       - name: Configure GN
         run: |
-          cd chromium_src
+          cd chromium/src
           mkdir -p out/${{ inputs.abi }}
-          # Replace %ABI% in our template with the matrix value
-          sed "s/%ABI%/${{ inputs.abi }}/g" ../helium-android/ci/args.gn > out/${{ inputs.abi }}/args.gn
+          
+          # Simple, clean args because gclient already generated the rest
+          cat > out/${{ inputs.abi }}/args.gn <<EOF
+          target_os = "android"
+          target_cpu = "${{ inputs.abi }}"
+          is_debug = false
+          is_official_build = true
+          symbol_level = 0
+          blink_symbol_level = 0
+          v8_symbol_level = 0
+          is_component_build = false
+          enable_nacl = false
+          use_thin_lto = false
+          android_sdk_root = "$ANDROID_HOME"
+          android_ndk_root = "$ANDROID_HOME/ndk/27.2.12479018"
+          android_ndk_version = "27.2.12479018"
+          EOF
+          
           gn gen out/${{ inputs.abi }}
-
-      - name: Restore Build Output Cache
-        uses: actions/cache@v4
-        with:
-          path: chromium_src/out/${{ inputs.abi }}
-          key: ${{ runner.os }}-out-${{ inputs.abi }}-${{ github.run_id }}
-          restore-keys: |
-            ${{ runner.os }}-out-${{ inputs.abi }}-
 
       - name: Build APK
         run: |
-          cd chromium_src
-          ninja -C out/${{ inputs.abi }} chrome_public_apk -j 4
+          cd chromium/src
+          autoninja -C out/${{ inputs.abi }} chrome_public_apk -j 4
 
       # ---------- 6. Artifact ----------
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: helium-android-${{ inputs.abi }}-${{ github.run_number }}
-          path: chromium_src/out/${{ inputs.abi }}/apks/ChromePublic.apk
+          name: helium-android-ui-${{ inputs.abi }}-${{ github.run_number }}
+          path: chromium/src/out/${{ inputs.abi }}/apks/ChromePublic.apk
           if-no-files-found: error
           retention-days: 14
