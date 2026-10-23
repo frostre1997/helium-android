@@ -163,6 +163,11 @@ jobs:
           ./upstream-helium/utils/downloads.py unpack -i upstream-helium/deps.ini -c chromium_download_cache chromium_src
 
       # ---------- 4. Android toolchain ----------
+      - name: Prepare Android SDK directory
+        run: |
+          sudo mkdir -p /usr/local/lib/android/sdk
+          sudo chown -R $USER:$USER /usr/local/lib/android
+
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
