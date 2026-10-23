@@ -223,6 +223,7 @@ jobs:
           mkdir -p chromium_src/build/config
           cat > chromium_src/build/config/gclient_args.gni <<EOF
           declare_args() {
+            build_with_chromium = true
             checkout_android = true
             checkout_android_native_support = true
             checkout_google_benchmark = false
