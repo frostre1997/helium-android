@@ -122,10 +122,39 @@ jobs:
 
       - name: Apply Helium UI Patches
         run: |
-          cd chromium
-          # Applies the patches from your repo in the order defined by patches/series
-          python3 ../helium-android/utils/patches.py apply src ../helium-android/patches
+          cd chromium/src
+          PATCH_DIR="../../helium-android/patches"
+          SERIES_FILE="$PATCH_DIR/series"
+    
+          if [ ! -f "$SERIES_FILE" ]; then
+            echo "::error::Missing series file at $SERIES_FILE"
+            exit 1
+          fi
 
+          echo "Starting patch application..."
+    
+          while IFS= read -r patch_name || [ -n "$patch_name" ]; do
+            # Skip empty lines and comments in the series file
+           [[ -z "$patch_name" || "$patch_name" =~ ^# ]] && continue
+      
+           echo "Applying: $patch_name"
+      
+           # Apply the patch. We add '|| true' to ignore exit code 1 (already applied),
+           # but we will check for exit code 2 (real failure) afterwards.
+           patch -p1 --forward --ignore-whitespace -i "$PATCH_DIR/$patch_name" < /dev/null || status=$?
+      
+           # If patch returned 2 or higher, it's a real conflict, not a reversed patch
+           if [ "${status:-0}" -ge 2 ]; then
+             echo "::error::Failed to apply $patch_name"
+             exit 1
+           fi
+      
+           # Reset status for the next loop
+           unset status
+             done < "$SERIES_FILE"
+    
+           echo "All patches applied successfully (or were already present)!"
+    
       # ---------- 5. GN & Build ----------
       - name: Configure GN
         run: |
