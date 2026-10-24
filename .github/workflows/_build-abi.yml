@@ -88,7 +88,7 @@ jobs:
 
           # Fetch WITHOUT the -v flag
           echo "Starting Chromium fetch (this will take 20-30 minutes)..."
-          fetch --nohooks --no-history android
+          fetch --git-cache --nohooks --no-history android
           
           # Stop the monitor
           kill $MONITOR_PID
