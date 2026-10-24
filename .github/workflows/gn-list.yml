@@ -7,7 +7,7 @@ permissions:
   contents: read
 
 jobs:
-  dump-vars:
+  GN-List:
     runs-on: ubuntu-latest
     timeout-minutes: 120
 
