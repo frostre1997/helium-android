@@ -66,13 +66,13 @@ jobs:
           export ANDROID_SDK_ROOT="/tmp/fake-android-sdk"
           
           # Generate the build directory
-          gn gen out/arm64 --args='target_os="android" target_cpu="arm64" android_sdk_root="/tmp/fake-android-sdk"'
+          gn gen out/${ABI} --args='target_os="android" target_cpu="%ABI%" android_sdk_root="/tmp/fake-android-sdk"'
 
       - name: List All GN Variables to File
         run: |
           cd chromium/src
           echo "Extracting variables..."
-          gn args out/arm64 --list > gn_variables.txt
+          gn args out/${ABI} --list > gn_variables.txt
           
           echo "Successfully extracted $(wc -l < gn_variables.txt) lines of variables."
           head -n 30 gn_variables.txt
