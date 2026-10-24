@@ -50,23 +50,23 @@ jobs:
           ) &
           MONITOR_PID=$!
 
-          fetch --nohooks --no-history android
+          # Added --git-cache to speed up the download significantly
+          fetch --git-cache --nohooks --no-history android
           kill $MONITOR_PID
           
           cd src
-          ./build/install-build-deps.sh --android
+          # We skip install-build-deps.sh because we only need to parse the files, not compile
           gclient runhooks
-
-      - name: Setup Android SDK Tools
-        uses: android-actions/setup-android@v3
-        with:
-          packages: ''
 
       - name: Generate GN Build Directory
         run: |
           cd chromium/src
-          # We must generate the build directory first so GN knows the target context
-          gn gen out/arm64 --args='target_os="android" target_cpu="arm64"'
+          # Fake the Android SDK path so GN doesn't crash when looking for it
+          export ANDROID_HOME="/tmp/fake-android-sdk"
+          export ANDROID_SDK_ROOT="/tmp/fake-android-sdk"
+          
+          # Generate the build directory
+          gn gen out/arm64 --args='target_os="android" target_cpu="arm64" android_sdk_root="/tmp/fake-android-sdk"'
 
       - name: List All GN Variables to File
         run: |
@@ -74,7 +74,6 @@ jobs:
           echo "Extracting variables..."
           gn args out/arm64 --list > gn_variables.txt
           
-          # Print a summary to the log so you can see it worked
           echo "Successfully extracted $(wc -l < gn_variables.txt) lines of variables."
           head -n 30 gn_variables.txt
 
