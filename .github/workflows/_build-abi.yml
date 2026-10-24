@@ -163,7 +163,7 @@ jobs:
           if [ "${{ matrix.abi }}" == "x86" ]; then mv out/x86/apks/ChromePublic.apk out/ChromePublic-x86.apk; fi
 
       - name: Upload Raw APK
-        uses: actions/upload-artifact@v4\7
+        uses: actions/upload-artifact@v7
         with:
           name: raw-apk-${{ matrix.abi }}
           path: chromium/src/out/ChromePublic*.apk
