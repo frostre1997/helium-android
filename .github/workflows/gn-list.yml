@@ -1,0 +1,86 @@
+name: List GN Variables - (Manual)
+
+on:
+  workflow_dispatch: # ONLY runs when you click the button in the Actions tab
+
+permissions:
+  contents: read
+
+jobs:
+  dump-vars:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          android: true
+          dotnet: true
+          haskell: true
+          tool-cache: false
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build unzip curl python3 python3-pip
+
+      - name: Install depot_tools
+        run: |
+          git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
+          echo "$PWD/depot_tools" >> $GITHUB_PATH
+          export PATH="$PWD/depot_tools:$PATH"
+          gclient version
+
+      - name: Fetch Chromium Source
+        run: |
+          git config --global http.postBuffer 524288000
+          git config --global advice.detachedHead false
+          export GIT_TERMINAL_PROMPT=0
+
+          mkdir -p chromium && cd chromium
+          
+          # Monitor progress
+          (
+            while true; do
+              SIZE=$(du -sh src 2>/dev/null | cut -f1)
+              echo "[TASK] Chromium size: ${SIZE:-Initializing...}"
+              sleep 30
+            done
+          ) &
+          MONITOR_PID=$!
+
+          fetch --nohooks --no-history android
+          kill $MONITOR_PID
+          
+          cd src
+          ./build/install-build-deps.sh --android
+          gclient runhooks
+
+      - name: Setup Android SDK Tools
+        uses: android-actions/setup-android@v3
+        with:
+          packages: ''
+
+      - name: Generate GN Build Directory
+        run: |
+          cd chromium/src
+          # We must generate the build directory first so GN knows the target context
+          gn gen out/arm64 --args='target_os="android" target_cpu="arm64"'
+
+      - name: List All GN Variables to File
+        run: |
+          cd chromium/src
+          echo "Extracting variables..."
+          gn args out/arm64 --list > gn_variables.txt
+          
+          # Print a summary to the log so you can see it worked
+          echo "Successfully extracted $(wc -l < gn_variables.txt) lines of variables."
+          head -n 30 gn_variables.txt
+
+      - name: Upload Variables Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-156-gn-variables
+          path: chromium/src/gn_variables.txt
+          retention-days: 14
